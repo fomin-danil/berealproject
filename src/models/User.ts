@@ -16,4 +16,4 @@ const UserSchema: Schema = new Schema({
     friendsList: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
 })
 
-export default mongoose.model<IUser>('User', UserSchema)
+export default mongoose.model<IUser>('User', UserSchema);
