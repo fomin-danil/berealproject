@@ -9,6 +9,14 @@ const postSchema = Joi.object({
     visibility: Joi.string().valid('public', 'private').default('public')
 })
 
+const updatePostSchema = Joi.object({
+    imageURL: Joi.string().uri().optional(),
+    caption: Joi.string().max(500).optional(),
+    visibility: Joi.string().valid('public', 'private', 'friends').optional(),
+    userId: Joi.string().required()
+});
+
+
 export const createPost = async (req: Request, res: Response) => {
     try {
         const { error } = postSchema.validate(req.body)
@@ -92,10 +100,21 @@ export const getPostById = async (req: Request, res: Response) => {
 
 export const updatePost = async (req: Request, res: Response) => {
     try {
+        const { error } = updatePostSchema.validate(req.body);
+        if (error) {
+            return res.status(400).json({ message: error.details[0].message });
+        }
+
         const post = await Post.findById(req.params.id)
 
         if (!post) {
             return res.status(404).json({ message: 'Post not found' })
+        }
+
+        const userId = req.body?.userId; 
+
+        if (post.authorId.toString() !== userId) {
+            return res.status(403).json({ message: 'Unauthorized: You can only edit your own posts' });
         }
 
         const { imageURL, caption, visibility } = req.body;
