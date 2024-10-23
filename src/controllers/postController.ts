@@ -9,6 +9,13 @@ const postSchema = Joi.object({
     visibility: Joi.string().valid('public', 'private').default('public')
 })
 
+const updatePostSchema = Joi.object({
+    userId: Joi.string().optional(),
+    imageURL: Joi.string().uri().optional(),
+    caption: Joi.string().max(500).optional(),
+    visibility: Joi.string().valid('public', 'private', 'friends').optional()
+})
+
 export const createPost = async (req: Request, res: Response) => {
     try {
         const { error } = postSchema.validate(req.body)
@@ -92,10 +99,21 @@ export const getPostById = async (req: Request, res: Response) => {
 
 export const updatePost = async (req: Request, res: Response) => {
     try {
+        const { error } = updatePostSchema.validate(req.body)
+        if (error) {
+            return res.status(400).json({ messsage: error.details[0].message })
+        }
+
         const post = await Post.findById(req.params.id)
 
         if (!post) {
             return res.status(404).json({ message: 'Post not found' })
+        }
+
+        const userId = req.body?.userId
+
+        if (post.authorId.toString() !== userId) {
+            return res.status(403).json({ message: 'User is unauthorized to edit this post'})
         }
 
         const { imageURL, caption, visibility } = req.body;
@@ -109,6 +127,69 @@ export const updatePost = async (req: Request, res: Response) => {
             post.visibility = visibility
         }
 
+        await post.save()
+        res.status(200).json(post)
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' })
+    }
+}
+
+export const deletePost = async (req: Request, res: Response) => {
+    try {
+        const post = await Post.findById(req.params.id)
+
+        if (!post) {
+            return res.status(404).json({ message: 'Post not found' })
+        }
+
+        const userId = req.body?.userId
+
+        if (post.authorId.toString() !== userId) {
+            return res.status(403).json({ message: 'User is unauthorized to edit this post'})
+        }
+
+        await post.deleteOne()
+        res.status(200).json({ message: 'Post deleted' })
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' })
+    }
+}
+
+export const likePost =  async (req: Request, res: Response) => {
+    try {
+        const post = await Post.findById(req.params.id)
+
+        if (!post) {
+            return res.status(404).json({ message: 'Post not found' })
+        }
+
+        const userId = req.body?.userId 
+        if (post.likes.includes(userId)) {
+            return res.status(400).json({ message: 'Post already liked'})
+        }
+
+        post.likes.push(userId)
+        await post.save()
+        res.status(200).json(post)
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' })
+    }
+}
+
+export const unlikePost =  async (req: Request, res: Response) => {
+    try {
+        const post = await Post.findById(req.params.id)
+
+        if (!post) {
+            return res.status(404).json({ message: 'Post not found' })
+        }
+
+        const userId = req.body?.userId 
+        if (!post.likes.includes(userId)) {
+            return res.status(400).json({ message: 'Post not liked'})
+        }
+
+        post.likes = post.likes.filter((id) => id.toString() !== userId)
         await post.save()
         res.status(200).json(post)
     } catch (error) {
