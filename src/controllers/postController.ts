@@ -1,9 +1,10 @@
 import { Request, Response } from "express";
 import Joi from 'joi'
 import Post from "../models/Post";
+import { AuthRequest } from "../middlewares/checkAuth";
 
 const postSchema = Joi.object({
-    authorId: Joi.string().required(),
+    // authorId: Joi.string().required(),
     imageURL: Joi.string().required(),
     caption: Joi.string().required(),
     visibility: Joi.string().valid('public', 'private').default('public')
@@ -16,7 +17,7 @@ const updatePostSchema = Joi.object({
     visibility: Joi.string().valid('public', 'private', 'friends').optional()
 })
 
-export const createPost = async (req: Request, res: Response) => {
+export const createPost = async (req: AuthRequest, res: Response) => {
     try {
         const { error } = postSchema.validate(req.body)
         
@@ -26,14 +27,15 @@ export const createPost = async (req: Request, res: Response) => {
             })
         }
 
-        const { authorId, imageURL, caption, visibility } = req.body
+        const authorId = req.userId;
+        const { imageURL, caption, visibility } = req.body
 
         const post = new Post({
             authorId, imageURL, caption, visibility
         })
 
         await post.save();
-        res.status(201).json({authorId})
+        res.status(201).json(post)
     } catch (err) {
         console.log('err', err);
         

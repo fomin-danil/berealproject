@@ -1,11 +1,13 @@
 import express, { Request, Response } from 'express';
 import dotenv from "dotenv";
 import mongoose, { ConnectOptions } from 'mongoose';
-import router from './routes/postRoutes';
+import postRouter from './routes/postRoutes';
+import authRouter from './routes/authRoutes';
 
 import "./models/User";
 import "./models/Post";
 import "./models/Comments";
+import userRouter from './routes/userRoutes';
 
 dotenv.config();
 
@@ -20,7 +22,9 @@ mongoose.connect(mongoURI).then(() => console.log('Connected to MongoDB')).catch
     process.exit(1);
 })
 
-app.use('/api/posts', router)
+app.use('/api/posts', postRouter);
+app.use('/api/auth', authRouter);
+app.use('/api/users', userRouter);
 
 app.get('/', (req: Request, res: Response) => {
     res.send('Hello World!!!')

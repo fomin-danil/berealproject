@@ -1,14 +1,15 @@
 import express from 'express'
 import { createPost, deletePost, getAllPosts, getPostById, likePost, unlikePost, updatePost } from '../controllers/postController';
+import checkAuth from '../middlewares/checkAuth';
 
-const router = express.Router();
+const postRouter = express.Router();
 
-router.post('/', createPost);
-router.get('/', getAllPosts);
-router.get('/:id', getPostById);
-router.put('/:id', updatePost);
-router.delete('/:id', deletePost);
-router.post('/:id/like', likePost);
-router.post('/:id/unlike', unlikePost);
+postRouter.post('/', checkAuth, createPost);
+postRouter.get('/', getAllPosts);
+postRouter.get('/:id', getPostById);
+postRouter.put('/:id', checkAuth, updatePost);
+postRouter.delete('/:id', checkAuth, deletePost);
+postRouter.post('/:id/like', checkAuth, likePost);
+postRouter.post('/:id/unlike', checkAuth, unlikePost);
 
-export default router;
+export default postRouter;
