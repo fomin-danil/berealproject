@@ -4,12 +4,12 @@ import checkAuth from '../middlewares/checkAuth';
 
 const postRouter = express.Router();
 
-postRouter.post('/', checkAuth, createPost);
-postRouter.get('/', getAllPosts);
-postRouter.get('/:id', getPostById);
-postRouter.put('/:id', checkAuth, updatePost);
-postRouter.delete('/:id', checkAuth, deletePost);
-postRouter.post('/:id/like', checkAuth, likePost);
-postRouter.post('/:id/unlike', checkAuth, unlikePost);
+postRouter.post('/', checkAuth(false), createPost);
+postRouter.get('/', checkAuth(true), getAllPosts);
+postRouter.get('/:id', checkAuth(true), getPostById);
+postRouter.put('/:id', checkAuth(false), updatePost);
+postRouter.delete('/:id', checkAuth(false), deletePost);
+postRouter.post('/:id/like', checkAuth(false), likePost);
+postRouter.post('/:id/unlike', checkAuth(false), unlikePost);
 
 export default postRouter;

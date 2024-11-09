@@ -6,8 +6,9 @@ import authRouter from './routes/authRoutes';
 
 import "./models/User";
 import "./models/Post";
-import "./models/Comments";
+import "./models/Comment";
 import userRouter from './routes/userRoutes';
+import commentRouter from './routes/commentRoutes';
 
 dotenv.config();
 
@@ -25,6 +26,7 @@ mongoose.connect(mongoURI).then(() => console.log('Connected to MongoDB')).catch
 app.use('/api/posts', postRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/users', userRouter);
+app.use('/api/comments', commentRouter);
 
 app.get('/', (req: Request, res: Response) => {
     res.send('Hello World!!!')

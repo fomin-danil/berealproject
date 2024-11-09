@@ -1,7 +1,8 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import Joi from 'joi'
 import Post from "../models/Post";
 import { AuthRequest } from "../middlewares/checkAuth";
+import { ObjectId } from "mongoose";
 
 const postSchema = Joi.object({
     // authorId: Joi.string().required(),
@@ -43,10 +44,9 @@ export const createPost = async (req: AuthRequest, res: Response) => {
     }
 }
 
-export const getAllPosts = async (req: Request, res: Response) => {
+export const getAllPosts = async (req: AuthRequest, res: Response) => {    
     try {
-        const requestingUserId = req.query.userId
-
+        const requestingUserId = req.userId;
         const posts = await Post.find()
         .populate('authorId', 'username profilePicture friendsList')
         .populate('comments')
@@ -54,6 +54,7 @@ export const getAllPosts = async (req: Request, res: Response) => {
         const filteredPosts = posts.filter((post) => {
             const author = post.authorId as any
             if (post.visibility === 'public') return true;
+            if (!requestingUserId) return false;
             if (post.visibility === 'private') {                
                 return requestingUserId === String(author._id)
             }
@@ -71,9 +72,10 @@ export const getAllPosts = async (req: Request, res: Response) => {
     }
 }
 
-export const getPostById = async (req: Request, res: Response) => {
+export const getPostById = async (req: AuthRequest, res: Response) => {
     try {
-        const requestingUserId = req.query.userId
+        const requestingUserId = req.userId;
+
         const post = await Post.findById(req.params.id)
         .populate('authorId', 'username profilePicture friendsList')
         .populate('comments')
@@ -84,14 +86,20 @@ export const getPostById = async (req: Request, res: Response) => {
 
         if (post.visibility === 'public') {
             return res.status(200).json(post)
-        } else if (post.visibility === 'friends') {
+        }
+
+        if (!requestingUserId) return false; 
+
+        if (post.visibility === 'friends') {
             const author = post.authorId as any;
             if (author.friendsList.includes(requestingUserId)) {
                 return res.status(200).json(post)
             } else {
                 return res.status(403).json({ message: 'You dont have permission to view this post' })
             }
-        } else if (post.visibility === 'private') {
+        }
+        
+        if (post.visibility === 'private') {
             return res.status(403).json({ message: 'This post is private' })
         }
     } catch (error) {
@@ -99,12 +107,15 @@ export const getPostById = async (req: Request, res: Response) => {
     }
 }
 
-export const updatePost = async (req: Request, res: Response) => {
+export const updatePost = async (req: AuthRequest, res: Response) => {
     try {
+        const requestingUserId = req.userId;
+
         const { error } = updatePostSchema.validate(req.body)
         if (error) {
             return res.status(400).json({ messsage: error.details[0].message })
         }
+        if (!requestingUserId) return res.status(403).json({ message: 'You dont have permission to edit this post'});
 
         const post = await Post.findById(req.params.id)
 
@@ -112,9 +123,7 @@ export const updatePost = async (req: Request, res: Response) => {
             return res.status(404).json({ message: 'Post not found' })
         }
 
-        const userId = req.body?.userId
-
-        if (post.authorId.toString() !== userId) {
+        if (post.authorId.toString() !== requestingUserId) {
             return res.status(403).json({ message: 'User is unauthorized to edit this post'})
         }
 
@@ -136,17 +145,18 @@ export const updatePost = async (req: Request, res: Response) => {
     }
 }
 
-export const deletePost = async (req: Request, res: Response) => {
+export const deletePost = async (req: AuthRequest, res: Response) => {
     try {
+        const requestingUserId = req.userId;
+        if (!requestingUserId) return res.status(403).json({ message: 'You dont have permission to edit this post'});
+
         const post = await Post.findById(req.params.id)
 
         if (!post) {
             return res.status(404).json({ message: 'Post not found' })
         }
 
-        const userId = req.body?.userId
-
-        if (post.authorId.toString() !== userId) {
+        if (post.authorId.toString() !== requestingUserId) {
             return res.status(403).json({ message: 'User is unauthorized to edit this post'})
         }
 
@@ -157,20 +167,22 @@ export const deletePost = async (req: Request, res: Response) => {
     }
 }
 
-export const likePost =  async (req: Request, res: Response) => {
+export const likePost =  async (req: AuthRequest, res: Response) => {
     try {
+        const requestingUserId = req.userId as ObjectId;
+        if (!requestingUserId) return res.status(403).json({ message: 'You dont have permission to edit this post'});
+
         const post = await Post.findById(req.params.id)
 
         if (!post) {
             return res.status(404).json({ message: 'Post not found' })
         }
 
-        const userId = req.body?.userId 
-        if (post.likes.includes(userId)) {
+        if (post.likes.includes(requestingUserId)) {
             return res.status(400).json({ message: 'Post already liked'})
         }
 
-        post.likes.push(userId)
+        post.likes.push(requestingUserId)
         await post.save()
         res.status(200).json(post)
     } catch (error) {
@@ -178,20 +190,24 @@ export const likePost =  async (req: Request, res: Response) => {
     }
 }
 
-export const unlikePost =  async (req: Request, res: Response) => {
+export const unlikePost =  async (req: AuthRequest, res: Response) => {
     try {
+        const requestingUserId = req.userId as ObjectId;
+        const requestingUserIdStringified = String(requestingUserId);
+
+        if (!requestingUserId) return res.status(403).json({ message: 'You dont have permission to edit this post'});
+
         const post = await Post.findById(req.params.id)
 
         if (!post) {
             return res.status(404).json({ message: 'Post not found' })
         }
 
-        const userId = req.body?.userId 
-        if (!post.likes.includes(userId)) {
+        if (!post.likes.includes(requestingUserId)) {
             return res.status(400).json({ message: 'Post not liked'})
         }
 
-        post.likes = post.likes.filter((id) => id.toString() !== userId)
+        post.likes = post.likes.filter((id) => id.toString() !== requestingUserIdStringified)
         await post.save()
         res.status(200).json(post)
     } catch (error) {
