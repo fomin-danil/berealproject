@@ -53,3 +53,46 @@ export const getCommentsForPost = async (req: AuthRequest, res: Response) => {
         return res.status(500).json({ message: 'Server error' })
     }
 }
+
+export const updateComment = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { text } = req.body;
+        const userId = req.userId;
+
+        const comment = await Comment.findById(id);
+
+        if (!comment) return res.status(404).json({ message: 'Comment not found'} );
+        if (comment.authorId.toString() !== userId) {
+            return res.status(403).json({ message: 'Unauthorized to edit this comment'} );
+        }
+
+        comment.text = text;
+        await comment.save();
+        res.status(200).json(comment);
+    } catch (error) {
+        return res.status(500).json({ message: 'Server error' })
+    }
+}
+
+export const deleteComment = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+        const userId = req.userId;
+
+        const comment = await Comment.findById(id);
+
+        if (!comment) return res.status(404).json({ message: 'Comment not found'} );
+        if (comment.authorId.toString() !== userId) {
+            return res.status(403).json({ message: 'Unauthorized to edit this comment'} );
+        }
+
+        await comment.deleteOne();
+        await Post.findByIdAndUpdate(comment.postId, {
+            $pull: { comments: comment._id }
+        });
+        res.status(200).json({ message: 'Comment deleted' });
+    } catch (error) {
+        return res.status(500).json({ message: 'Server error' })
+    }
+}
